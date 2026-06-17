@@ -15,7 +15,7 @@
 Используется датасет [Olist Brazilian E-Commerce Dataset (Kaggle)](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce)
 
 ### Схема данных 
-<img src="https://i.imgur.com/HRhd2Y0.png" width="300" height="150" align="left">
+<img src="https://i.imgur.com/HRhd2Y0.png" width="100%">
 
 
 ## Стек технологий
