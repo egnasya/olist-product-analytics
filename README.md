@@ -32,5 +32,6 @@ olist-ecommerce-product-analytics/
 │   ├── raw
 │   └── cleaned            
 ├── notebooks/             # Jupyter ноутбуки
-│   └── 01_data_cleaning.ipynb
+│   ├── 01_data_profiling.ipynb          
+│   └── 02_data_cleaning.ipynb
 └── README.md
