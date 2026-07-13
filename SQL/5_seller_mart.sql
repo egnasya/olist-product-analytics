@@ -26,7 +26,6 @@ SELECT
     s.seller_state,
     COUNT(so.order_id) AS total_orders,
     COALESCE(SUM(so.seller_order_revenue), 0) AS total_revenue,
-    COALESCE(SUM(so.seller_order_revenue), 0) AS total_value,
     ROUND(AVG(so.seller_order_revenue), 2) AS avg_order_value,
     COALESCE(SUM(so.seller_order_items_cnt), 0) AS total_items_sold,
     MIN(so.order_purchase_timestamp) AS first_order_date,
