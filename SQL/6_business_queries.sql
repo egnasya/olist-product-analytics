@@ -1,6 +1,11 @@
 -- ИССЛЕДОВАНИЕ ПОКАЗАТЕЛЕЙ ЗАКАЗОВ --
--- Выручка, количество заказов и средний чек
-SELECT SUM(oe.payment_value) as revenue, COUNT(*) as number_of_orders, ROUND(SUM(oe.payment_value) / COUNT(*), 2) as avg_order_value
+-- Выручка, оборот, количество заказов и средний чек
+SELECT 
+	COUNT(*) as number_of_orders, 
+	SUM(oe.product_revenue) as revenue, 
+	ROUND(SUM(oe.product_revenue) / COUNT(*), 2) as avg_order_revenue, 
+	SUM(oe.order_total_value) as GMV, 
+	ROUND(SUM(oe.order_total_value) / COUNT(*), 2) as avg_order_value
 FROM orders_enriched oe
 
 -- Среднее время доставки, доля задержанных
@@ -18,12 +23,11 @@ FROM orders_enriched oe
 
 
 -- ИССЛЕДОВАНИЕ ПОКАЗАТЕЛЕЙ ПО ПОКУПАТЕЛЯМ --
--- Количество покупателей
-SELECT COUNT() as number_of_customers, ROUND(SUM(CASE WHEN cm.total_orders > 1 THEN 1.0 ELSE 0.0 END) / COUNT(*) * 100, 2) as repeat_purchase_rate
-FROM customer_mart cm
-
--- Доля покупателей с повторными покупками, среднее число заказов на клиента
-SELECT ROUND(SUM(CASE WHEN cm.total_orders > 1 THEN 1.0 ELSE 0.0 END) / COUNT() * 100, 2) as repeat_purchase_rate, ROUND(AVG(cm.total_orders), 2) as avg_orders
+-- Количество покупателей, доля покупателей с повторными покупками, среднее число заказов на клиента
+SELECT 
+	COUNT() as number_of_customers, 
+	ROUND(SUM(CASE WHEN cm.total_orders > 1 THEN 1.0 ELSE 0.0 END) / COUNT(*) * 100, 2) as repeat_purchase_rate, 
+	ROUND(AVG(cm.total_orders), 2) as avg_orders
 FROM customer_mart cm
 
 -- Топ-5 покупателей по количеству заказов
@@ -36,10 +40,10 @@ SELECT rc.customer_unique_id, rc.total_orders
 FROM ranked_customers rc
 WHERE rc.customer_rank <= 5;
 
--- Топ-10 покупателей по выручке
-SELECT cm.customer_unique_id, cm.customer_total_spent 
+-- Топ-10 покупателей по сумме совершенных покупок
+SELECT cm.customer_unique_id, cm.customer_payment_received 
 FROM customer_mart cm 
-ORDER BY cm.customer_total_spent DESC LIMIT 10
+ORDER BY cm.customer_payment_received DESC LIMIT 10
 
 
 -- ИССЛЕДОВАНИЕ ПОКАЗАТЕЛЕЙ ПО ТОВАРАМ --
@@ -53,9 +57,9 @@ FROM product_mart pm
 ORDER BY pm.total_orders DESC LIMIT 10
 
 -- Топ-10 товаров по выручке
-SELECT pm.product_id, pm.total_value  
+SELECT pm.product_id, pm.product_revenue  
 FROM product_mart pm 
-ORDER BY pm.total_value DESC LIMIT 10
+ORDER BY pm.product_revenue DESC LIMIT 10
 
 -- Топ-10 товаров по количеству уникальных покупателей
 SELECT pm.product_id, pm.unique_customers_count 
@@ -64,7 +68,7 @@ ORDER BY pm.unique_customers_count DESC LIMIT 10
 
 
 -- ИССЛЕДОВАНИЕ ПОКАЗАТЕЛЕЙ ПО ПРОДАВЦАМ --
--- Количество продавцнов
+-- Количество продавцов
 SELECT COUNT(*) as number_of_sellers
 FROM seller_mart sm 
 
@@ -79,9 +83,9 @@ FROM ranked_sellers rs
 WHERE rs.seller_rank <= 10
 
 -- Топ-10 продавцов по выручке
-SELECT sm.seller_id, sm.total_revenue   
+SELECT sm.seller_id, sm.sellers_revenue   
 FROM seller_mart sm 
-ORDER BY sm.total_revenue DESC LIMIT 10
+ORDER BY sm.sellers_revenue DESC LIMIT 10
 
 -- Топ-10 продавцов по количеству проданных товаров
 SELECT sm.seller_id, sm.total_items_sold    
@@ -93,9 +97,11 @@ ORDER BY sm.total_items_sold DESC LIMIT 10
 -- Количество заказов, выручка и средний чек по месяцам по каждому году
 SELECT 
     strftime('%m.%Y', oe.order_purchase_timestamp) AS order_month, 
-    COUNT(oe.order_id) AS total_orders,
-    SUM(oe.payment_value) as revenue,
-    ROUND(SUM(oe.payment_value) / COUNT(oe.order_id), 2) as avg_order_value
+    COUNT(*) as number_of_orders, 
+	SUM(oe.product_revenue) as revenue, 
+	ROUND(SUM(oe.product_revenue) / COUNT(*), 2) as avg_order_revenue, 
+	SUM(oe.order_total_value) as GMV, 
+	ROUND(SUM(oe.order_total_value) / COUNT(*), 2) as avg_order_value
 FROM orders_enriched oe
 GROUP BY strftime('%Y', oe.order_purchase_timestamp), strftime('%m', oe.order_purchase_timestamp)
 ORDER BY strftime('%Y', oe.order_purchase_timestamp) ASC, strftime('%m', oe.order_purchase_timestamp) ASC
@@ -111,9 +117,11 @@ SELECT
         WHEN '6' THEN 'Суббота'
         WHEN '0' THEN 'Воскресенье'
     END as weekday_name,
-    COUNT(oe.order_id) AS total_orders,
-    SUM(oe.payment_value) as revenue,
-    ROUND(SUM(oe.payment_value) / COUNT(oe.order_id), 2) as avg_order_value
+    COUNT(*) as number_of_orders, 
+	SUM(oe.product_revenue) as revenue, 
+	ROUND(SUM(oe.product_revenue) / COUNT(*), 2) as avg_order_revenue, 
+	SUM(oe.order_total_value) as GMV, 
+	ROUND(SUM(oe.order_total_value) / COUNT(*), 2) as avg_order_value
 FROM orders_enriched oe
 GROUP BY weekday_name 
 ORDER BY strftime('%w', oe.order_purchase_timestamp) 
@@ -127,8 +135,10 @@ SELECT
         WHEN strftime('%H', oe.order_purchase_timestamp) BETWEEN '18' AND '23' THEN 'Вечер'
         ELSE 'Ночь' 
     END as time_of_day,
-    COUNT(oe.order_id) as total_orders,
-    SUM(oe.payment_value) as revenue,
-    ROUND(SUM(oe.payment_value) / COUNT(oe.order_id), 2) as avg_order_value
+    COUNT(*) as number_of_orders, 
+	SUM(oe.product_revenue) as revenue, 
+	ROUND(SUM(oe.product_revenue) / COUNT(*), 2) as avg_order_revenue, 
+	SUM(oe.order_total_value) as GMV, 
+	ROUND(SUM(oe.order_total_value) / COUNT(*), 2) as avg_order_value
 FROM orders_enriched oe
 GROUP BY order_hour 

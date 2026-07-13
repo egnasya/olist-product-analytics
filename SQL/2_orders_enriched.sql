@@ -1,15 +1,12 @@
 --CREATE VIEW orders_enriched AS
-WITH 
--- 1. АГРЕГАЦИЯ ПЛАТЕЖЕЙ (order-level)
-payments_agg AS (
+WITH payments_agg AS (
     SELECT 
         order_id,
-        SUM(payment_value) AS payment_value,
+        SUM(payment_value) AS payment_received,
         MAX(payment_type) AS payment_type
     FROM order_payments
     GROUP BY order_id
 ),
--- 2. АГРЕГАЦИЯ ОТЗЫВОВ (order-level)
 reviews_agg AS (
     SELECT 
         order_id,
@@ -17,17 +14,15 @@ reviews_agg AS (
     FROM order_reviews
     GROUP BY order_id
 ),
--- 3. АГРЕГАЦИЯ ТОВАРОВ (order-level)
 items_agg AS (
     SELECT 
         order_id,
-        SUM(price) AS items_price,
-        SUM(freight_value) AS items_freight,
-        SUM(price + freight_value) AS item_total_amount
+        SUM(price) AS product_revenue,
+        SUM(freight_value) AS total_freight,
+        SUM(price + freight_value) AS order_total_value
     FROM order_items
     GROUP BY order_id
 ),
--- 4. БАЗОВЫЙ ORDER LEVEL (основная таблица заказов)
 orders_base AS (
     SELECT 
         order_id,
@@ -42,7 +37,6 @@ orders_base AS (
         is_delay
     FROM orders
 ),
--- 5. ДОБАВЛЯЕМ КЛИЕНТОВ
 orders_customers AS (
     SELECT 
         o.*,
@@ -52,7 +46,6 @@ orders_customers AS (
     LEFT JOIN customers c 
         ON o.customer_id = c.customer_id
 ),
--- 6. ДОБАВЛЯЕМ ITEM + PAYMENT + REVIEW
 final_orders AS (
     SELECT 
         o.order_id,
@@ -68,10 +61,10 @@ final_orders AS (
         o.delivered_time_days,
         o.is_delay,
         p.payment_type,
-        p.payment_value,
-        i.items_price,
-        i.items_freight,
-        i.item_total_amount,
+        p.payment_received,
+        i.product_revenue,
+        i.total_freight,
+        i.order_total_value,
         r.review_score
     FROM orders_customers o
     LEFT JOIN payments_agg p 
@@ -81,6 +74,5 @@ final_orders AS (
     LEFT JOIN items_agg i 
         ON o.order_id = i.order_id
 )
--- 7. СОЗДАНИЕ ПРЕДСТАВЛЕНИЯ И ФИНАЛЬНЫЙ SELECT
 SELECT *
 FROM final_orders;
