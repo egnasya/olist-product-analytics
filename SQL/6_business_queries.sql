@@ -1,16 +1,16 @@
 -- ИССЛЕДОВАНИЕ ПОКАЗАТЕЛЕЙ ЗАКАЗОВ --
--- Количество заказов, оборот и средняя стоимость оформленной корины 
+-- Количество заказов, оборот и средняя стоимость оформленной корзины 
 SELECT 
 	COUNT(*) as number_of_orders, 
 	SUM(oe.order_total_value) as GMV, 
-	ROUND(SUM(oe.order_total_value) / COUNT(*), 2) as avg_order_value
+	ROUND(AVG(oe.order_total_value), 2) as avg_order_value
 FROM orders_enriched oe
 
 -- Количество доставленных заказов, выручка и средний чек 
 SELECT 
 	COUNT(*) as number_of_orders, 
 	SUM(oe.product_revenue) as revenue, 
-	ROUND(SUM(oe.product_revenue) / COUNT(*), 2) as avg_order_revenue
+	ROUND(AVG(oe.product_revenue), 2) as avg_order_revenue
 FROM orders_enriched oe
 WHERE oe.order_status = 'delivered';
 
@@ -40,7 +40,7 @@ GROUP BY is_delay;
 -- Количество покупателей, доля покупателей с повторными покупками, среднее число заказов на клиента
 SELECT 
 	COUNT(*) as number_of_customers, 
-	ROUND(SUM(CASE WHEN cm.total_orders > 1 THEN 1.0 ELSE 0.0 END) / COUNT(*) * 100, 2) as repeat_purchase_rate, 
+	ROUND(AVG(CASE WHEN cm.total_orders > 1 THEN 1.0 ELSE 0.0 END) * 100, 2) as repeat_purchase_rate, 
 	ROUND(AVG(cm.total_orders), 4) as avg_orders
 FROM customer_mart cm;
 
@@ -113,20 +113,20 @@ ORDER BY sm.total_items_sold DESC LIMIT 10
 
 
 -- ИССЛЕДОВАНИЕ ВРЕМЕННЫХ ТРЕНДОВ --
--- Количество заказов, выручка и средний чек по месяцам по каждому году (учитываются только спешные (доставленные) заказы)
+-- Количество заказов, выручка и средний чек по месяцам по каждому году (учитываются только успешные (доставленные) заказы)
 SELECT 
     strftime('%Y-%m', oe.order_purchase_timestamp) AS order_month, 
     COUNT(*) as number_of_orders, 
 	SUM(oe.product_revenue) as revenue, 
-	ROUND(SUM(oe.product_revenue) / COUNT(*), 2) as avg_order_revenue, 
+	ROUND(AVG(oe.product_revenue), 2) as avg_order_revenue, 
 	SUM(oe.order_total_value) as GMV, 
-	ROUND(SUM(oe.order_total_value) / COUNT(*), 2) as avg_order_value
+	ROUND(AVG(oe.order_total_value), 2) as avg_order_value
 FROM orders_enriched oe
 WHERE oe.order_status = 'delivered'
 GROUP BY strftime('%Y', oe.order_purchase_timestamp), strftime('%m', oe.order_purchase_timestamp)
 ORDER BY strftime('%Y', oe.order_purchase_timestamp) ASC, strftime('%m', oe.order_purchase_timestamp) ASC
 
--- Количество заказов по дням недели (учитываются только спешные (доставленные) заказы)
+-- Количество заказов по дням недели (учитываются только успешные (доставленные) заказы)
 SELECT 
 	CASE strftime('%w', oe.order_purchase_timestamp)
         WHEN '1' THEN 'Понедельник'
@@ -139,15 +139,15 @@ SELECT
     END as weekday_name,
     COUNT(*) as number_of_orders, 
 	SUM(oe.product_revenue) as revenue, 
-	ROUND(SUM(oe.product_revenue) / COUNT(*), 2) as avg_order_revenue, 
+	ROUND(AVG(oe.product_revenue), 2) as avg_order_revenue, 
 	SUM(oe.order_total_value) as GMV, 
-	ROUND(SUM(oe.order_total_value) / COUNT(*), 2) as avg_order_value
+	ROUND(AVG(oe.order_total_value), 2) as avg_order_value
 FROM orders_enriched oe
 WHERE oe.order_status = 'delivered'
 GROUP BY weekday_name 
 ORDER BY strftime('%w', oe.order_purchase_timestamp) 
 
--- Количество заказов по времени (учитываются только спешные (доставленные) заказы)
+-- Количество заказов по времени (учитываются только успешные (доставленные) заказы)
 SELECT 
 	strftime('%H', oe.order_purchase_timestamp) as order_hour,
 	CASE 
@@ -158,9 +158,9 @@ SELECT
     END as time_of_day,
     COUNT(*) as number_of_orders, 
 	SUM(oe.product_revenue) as revenue, 
-	ROUND(SUM(oe.product_revenue) / COUNT(*), 2) as avg_order_revenue, 
+	ROUND(AVG(oe.product_revenue), 2) as avg_order_revenue, 
 	SUM(oe.order_total_value) as GMV, 
-	ROUND(SUM(oe.order_total_value) / COUNT(*), 2) as avg_order_value
+	ROUND(AVG(oe.order_total_value), 2) as avg_order_value
 FROM orders_enriched oe
 WHERE oe.order_status = 'delivered'
 GROUP BY order_hour 
@@ -168,10 +168,26 @@ GROUP BY order_hour
 -- КОНВЕРСИЯ МЕЖДУ ЭТАПАМИ --
 SELECT
 	COUNT(*) as total_orders,
-	ROUND(SUM(CASE WHEN o.order_purchase_timestamp IS NOT NULL THEN 1.0 ELSE 0.0 END) / COUNT(*), 4) as creted_rate,
-	ROUND(SUM(CASE WHEN o.approval_time_hours  IS NOT NULL THEN 1.0 ELSE 0.0 END) / COUNT(*), 4) as approval_rate,
-	ROUND(SUM(CASE WHEN o.order_delivered_carrier_date IS NOT NULL THEN 1.0 ELSE 0.0 END) / COUNT(*), 4) as shipping_rate,
-	ROUND(SUM(CASE WHEN o.order_delivered_customer_date IS NOT NULL THEN 1.0 ELSE 0.0 END) / COUNT(*), 4) as delivery_rate
+	ROUND(AVG(CASE WHEN o.order_purchase_timestamp IS NOT NULL THEN 1.0 ELSE 0.0 END) * 100, 2) as created_rate,
+	ROUND(AVG(CASE WHEN o.approval_time_hours  IS NOT NULL THEN 1.0 ELSE 0.0 END) * 100, 2) as approval_rate,
+	ROUND(AVG(CASE WHEN o.order_delivered_carrier_date IS NOT NULL THEN 1.0 ELSE 0.0 END) * 100, 2) as shipping_rate,
+	ROUND(AVG(CASE WHEN o.order_delivered_customer_date IS NOT NULL THEN 1.0 ELSE 0.0 END) * 100, 2) as delivery_rate
 FROM orders o;
 
-
+-- ABC-АНАЛИЗ ТОВАРОВ --
+WITH products AS (
+    SELECT
+        product_id,
+        product_revenue,
+        SUM(product_revenue) OVER(ORDER BY product_revenue DESC) AS cumulative_revenue,
+        SUM(product_revenue) OVER() AS total_revenue
+    FROM product_mart
+)
+SELECT *,
+       ROUND(cumulative_revenue * 100.0 / total_revenue, 2) AS cumulative_share,
+       CASE
+            WHEN cumulative_revenue * 1.0 / total_revenue <= 0.8 THEN 'A'
+            WHEN cumulative_revenue * 1.0 / total_revenue <= 0.95 THEN 'B'
+            ELSE 'C'
+       END AS abc_class
+FROM products;
